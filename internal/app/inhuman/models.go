@@ -1,5 +1,12 @@
 package inhuman
 
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"strings"
+)
+
 type App struct {
 	Id                int64             `json:"-" db:"id"`
 	Bundle            string            `json:"bundle" db:"bundle"`
@@ -25,6 +32,59 @@ type App struct {
 	ContentRating     string            `json:"contentRating" db:"content_rating"`
 	DeveloperContacts DeveloperContacts `json:"developerContacts" db:"developer_contacts"`
 	PrivacyPolicy     string            `json:"privacyPolicy,omitempty"`
+}
+
+func (a App) Fields() string {
+	fields := make([]string, 0)
+
+	t := reflect.TypeOf(a)
+	if t.Kind() == reflect.Struct {
+		for i := 0; i < t.NumField(); i ++ {
+			name := t.Field(i).Name
+			fields = append(fields, strings.ToLower(string(name[0])) + name[1:])
+		}
+	}
+
+	return strings.Join(fields[1:], ", ")
+}
+
+func (a App) String() string {
+	screens, _ := json.Marshal(map[string]interface{}{
+		"screenshots": a.Screenshots,
+	})
+	histogram, _ := json.Marshal(map[string]interface{}{
+		"ratingHistogram": a.RatingHistogram,
+	})
+	contacts, _ := json.Marshal(map[string]interface{}{
+		"developerContacts": a.DeveloperContacts,
+	})
+
+	return fmt.Sprintf(
+		"%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
+		a.Bundle,
+		a.DeveloperId,
+		a.Developer,
+		a.Title,
+		a.Categories,
+		a.Price,
+		a.Picture,
+		string(screens),
+		a.Rating,
+		a.ReviewCount,
+		string(histogram),
+		a.Description,
+		a.ShortDescription,
+		a.RecentChanges,
+		a.ReleaseDate,
+		a.LastUpdateDate,
+		a.AppSize,
+		a.Installs,
+		a.Version,
+		a.AndroidVersion,
+		a.ContentRating,
+		string(contacts),
+		a.PrivacyPolicy,
+	)
 }
 
 type DeveloperContacts struct {
