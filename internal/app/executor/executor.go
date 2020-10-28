@@ -2,13 +2,13 @@ package executor
 
 import (
 	"Nani/internal/app/cache"
+	"Nani/internal/app/config"
 	"Nani/internal/app/db"
 	"Nani/internal/app/file"
 	"Nani/internal/app/inhuman"
 	"context"
 	"errors"
 	"fmt"
-	"log"
 )
 
 type ExecutorError struct {
@@ -25,6 +25,8 @@ type Executor struct {
 	cache       cache.Storage
 	ctx         context.Context
 	repository  db.AppRepository
+	keyCache    cache.KeyStorage
+	config      *config.Config
 	db          databaseCh
 	errs        errorCh
 }
@@ -37,6 +39,7 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 		return err
 	}
 	go ex.selector()
+	go ex.appsBatch()
 
 	// If 'last' exists then slice bundles array and continue from last parsed app
 	cachedBundles, err := ex.cache.GetV("bundles")
@@ -141,11 +144,30 @@ func (ex *Executor) selector() {
 					apps = nil
 				}
 			case inhuman.Keywords:
-				log.Print(data)
+				keys := SortKeywords(data)[:ex.config.KeysCount]
+				for _, k := range keys {
+					err := ex.keyCache.Set(k)
+					if err != nil {
+						ex.saveError("keyCache", err.Error(), "")
+					}
+				}
 			}
 		default:
 			// Add case for error or cancel loop
 		}
+	}
+}
+
+func (ex *Executor) appsBatch() {
+	for {
+		key, err := ex.keyCache.Next()
+		if err != nil {
+			if err.Error() == "keywords are out of range" {
+				return
+			}
+			continue
+		}
+		ex.storeApps(false, key)
 	}
 }
 
