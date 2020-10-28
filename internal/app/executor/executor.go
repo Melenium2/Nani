@@ -2,6 +2,7 @@ package executor
 
 import (
 	"Nani/internal/app/cache"
+	"Nani/internal/app/db"
 	"Nani/internal/app/file"
 	"Nani/internal/app/inhuman"
 	"context"
@@ -11,8 +12,8 @@ import (
 )
 
 type ExecutorError struct {
-	t string
-	er string
+	t      string
+	er     string
 	bundle string
 }
 
@@ -21,14 +22,15 @@ type errorCh chan ExecutorError
 
 type Executor struct {
 	externalApi inhuman.ExternalApi
-	close       context.Context
 	cache       cache.Storage
+	ctx         context.Context
+	repository  db.AppRepository
 	db          databaseCh
 	errs        errorCh
 }
 
 func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
-	ex.close = ctx
+	ex.ctx = ctx
 
 	err := ex.declareTask(scrapfile)
 	if err != nil {
@@ -123,16 +125,26 @@ func (ex *Executor) saveError(t, er, bundle string) {
 
 // selector main loop of channels
 func (ex *Executor) selector() {
+	apps := make([]*inhuman.App, 0)
 	for {
 		select {
 		case t := <-ex.db:
 			switch data := t.(type) {
 			case *inhuman.App:
-				log.Print(data)
+				apps = append(apps, data)
+				if len(apps) > 50 {
+					err := ex.repository.InsertBatch(ex.ctx, apps)
+					if err != nil {
+						ex.saveError("db", err.Error(), "")
+						continue
+					}
+					apps = nil
+				}
 			case inhuman.Keywords:
 				log.Print(data)
 			}
 		default:
+			// Add case for error or cancel loop
 		}
 	}
 }

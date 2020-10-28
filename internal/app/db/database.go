@@ -8,7 +8,7 @@ import (
 	"github.com/mailru/go-clickhouse"
 )
 
-type Repository interface {
+type AppRepository interface {
 	Insert(ctx context.Context, app *inhuman.App) error
 	InsertBatch(ctx context.Context, apps[] *inhuman.App) error
 }

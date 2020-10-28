@@ -100,7 +100,7 @@ func TestInsertMock_ShouldInsertNewRecordToDb_NoError(t *testing.T) {
 			app.PrivacyPolicy).
 		WillReturnResult(sqlmock.NewErrorResult(nil))
 
-	var rep db.Repository
+	var rep db.AppRepository
 	assert.NotPanics(t, func() {
 		rep = db.New(db.Config{Connection: d})
 	})
@@ -149,7 +149,7 @@ func TestInsertBatchMock_ShouldInsertNewRecords_NoError(t *testing.T) {
 	}
 	mock.ExpectCommit()
 
-	var rep db.Repository
+	var rep db.AppRepository
 	assert.NotPanics(t, func() {
 		rep = db.New(db.Config{Connection: d})
 	})
@@ -198,7 +198,7 @@ func TestInsertBatchMock_ShouldRiseErrorCozDbConnectionLost_Error(t *testing.T) 
 	d.Close()
 	mock.ExpectCommit()
 
-	var rep db.Repository
+	var rep db.AppRepository
 	assert.NotPanics(t, func() {
 		rep = db.New(db.Config{Connection: d})
 	})

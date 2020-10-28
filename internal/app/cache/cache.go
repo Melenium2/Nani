@@ -20,11 +20,6 @@ type Storage interface {
 	GetV(key string) (interface{}, error)
 }
 
-type Item struct {
-	V       interface{} `json:"V,omitempty"`
-	Expired int64       `json:"Expired,omitempty"`
-}
-
 type Cache struct {
 	Clear     bool
 	Debug     bool
