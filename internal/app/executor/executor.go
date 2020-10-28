@@ -9,16 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 )
-
-type ExecutorError struct {
-	t      string
-	er     string
-	bundle string
-}
-
-type databaseCh chan interface{}
-type errorCh chan ExecutorError
 
 type Executor struct {
 	externalApi inhuman.ExternalApi
@@ -28,9 +20,12 @@ type Executor struct {
 	keyCache    cache.KeyStorage
 	config      *config.Config
 	db          databaseCh
-	errs        errorCh
+	wait        chan struct{}
+	cancel      bool
 }
 
+// Scrap starting scraping all apps from scrapfile until error or
+// cancel of scraping
 func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 	ex.ctx = ctx
 
@@ -41,7 +36,11 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 	go ex.selector()
 	go ex.appsBatch()
 
-	// If 'last' exists then slice bundles array and continue from last parsed app
+	last, err := ex.cache.GetV("last")
+	startAt := 0
+	if err == nil {
+		startAt = last.(int)
+	}
 	cachedBundles, err := ex.cache.GetV("bundles")
 	if err != nil {
 		return err
@@ -50,17 +49,9 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 	if !ok {
 		return errors.New("can not convert bundles")
 	}
-	ex.storeApps(true, bundles...)
-	// Run function for scraping application
-	// Then storeApps this application info to apps table with all application bundles
-	// In the same time we get top keywords from application and send them to channel
-	// which get 250 apps developers and save them (or not)
-	// Secluded channel will scrap info about application from previous step
-	// and save them to apps table too
+	ex.storeApps(true, bundles[startAt:]...)
 
-	// Errors...
-	// If errors occur then we need to storeApps state at the cache (redis or local)
-	// and keep thinking over about this question
+	<-ex.wait
 	return nil
 }
 
@@ -88,7 +79,7 @@ func (ex *Executor) storeApps(withKeys bool, bundles ...string) {
 	for i, v := range bundles {
 		app, err := ex.externalApi.App(v)
 		if err != nil {
-			ex.saveError("apps", fmt.Sprintf("error in external api method App() %s", err), v)
+			ex.saveError("apps", v, fmt.Errorf("error in external api method App() %s", err))
 		} else {
 			ex.db <- app
 			if withKeys {
@@ -105,7 +96,7 @@ func (ex *Executor) storeApps(withKeys bool, bundles ...string) {
 func (ex *Executor) storeKeywords(app *inhuman.App) {
 	keys, err := ex.externalApi.Keys(app.Title, app.Description, app.ShortDescription, "")
 	if err != nil {
-		ex.saveError("keys", fmt.Sprintf("error in external method Keys() %s", err), app.Bundle)
+		ex.saveError("keys", app.Bundle, fmt.Errorf("error in external method Keys() %s", err))
 	}
 	ex.db <- keys
 }
@@ -115,7 +106,7 @@ func (ex *Executor) storeKeywords(app *inhuman.App) {
 //	t: string (type of error)
 // 	er: string (error representation)
 // 	bundle: string (bundle where error occurred)
-func (ex *Executor) saveError(t, er, bundle string) {
+func (ex *Executor) saveError(t, bundle string, er error) {
 	e, err := ex.cache.GetV("errors")
 	if err != nil {
 		ex.cache.Set("errors", []ExecutorError{{t, er, bundle}})
@@ -129,7 +120,7 @@ func (ex *Executor) saveError(t, er, bundle string) {
 // selector main loop of channels
 func (ex *Executor) selector() {
 	apps := make([]*inhuman.App, 0)
-	for {
+	for ex.cancel {
 		select {
 		case t := <-ex.db:
 			switch data := t.(type) {
@@ -138,7 +129,7 @@ func (ex *Executor) selector() {
 				if len(apps) > 50 {
 					err := ex.repository.InsertBatch(ex.ctx, apps)
 					if err != nil {
-						ex.saveError("db", err.Error(), "")
+						ex.saveError("db", "", err)
 						continue
 					}
 					apps = nil
@@ -148,21 +139,30 @@ func (ex *Executor) selector() {
 				for _, k := range keys {
 					err := ex.keyCache.Set(k)
 					if err != nil {
-						ex.saveError("keyCache", err.Error(), "")
+						ex.saveError("keyCache", "", err)
 					}
 				}
 			}
 		default:
-			// Add case for error or cancel loop
+		}
+	}
+
+	for _, app := range apps {
+		err := ex.repository.Insert(ex.ctx, app)
+		if err != nil {
+			ex.saveError("db", "", err)
+			continue
 		}
 	}
 }
 
+// AppsBatch scrap new applications while keys still remain
 func (ex *Executor) appsBatch() {
-	for {
+	for ex.cancel {
 		key, err := ex.keyCache.Next()
 		if err != nil {
 			if err.Error() == "keywords are out of range" {
+				ex.Stop()
 				return
 			}
 			continue
@@ -171,10 +171,16 @@ func (ex *Executor) appsBatch() {
 	}
 }
 
+// Stop scraping
 func (ex *Executor) Stop() {
-
+	ctx, cancel := context.WithTimeout(ex.ctx, time.Second*15)
+	defer cancel()
+	ex.cancel = true
+	ex.ctx = ctx
+	ex.wait <- struct{}{}
 }
 
+// Create new instance of Executor
 func New(api inhuman.ExternalApi, storage cache.Storage) *Executor {
 	return &Executor{
 		externalApi: api,
