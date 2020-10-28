@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 type App struct {
@@ -35,17 +34,7 @@ type App struct {
 }
 
 func (a App) Fields() string {
-	fields := make([]string, 0)
-
-	t := reflect.TypeOf(a)
-	if t.Kind() == reflect.Struct {
-		for i := 0; i < t.NumField(); i ++ {
-			name := t.Field(i).Name
-			fields = append(fields, strings.ToLower(string(name[0])) + name[1:])
-		}
-	}
-
-	return strings.Join(fields[1:], ", ")
+	return StructFields(reflect.TypeOf(a))[4:]
 }
 
 func (a App) String() string {

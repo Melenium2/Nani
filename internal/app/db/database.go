@@ -20,7 +20,7 @@ type ClickhouseDatabase struct {
 func (c *ClickhouseDatabase) Insert(ctx context.Context, app *inhuman.App) error {
 	_, err := c.connection.ExecContext(
 		ctx,
-		fmt.Sprintf("insert into apps (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", app.Fields()),
+		fmt.Sprintf("insert into apps (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", app.Fields()),
 		app.Bundle,
 		app.DeveloperId,
 		app.Developer,
@@ -42,7 +42,8 @@ func (c *ClickhouseDatabase) Insert(ctx context.Context, app *inhuman.App) error
 		app.Version,
 		app.AndroidVersion,
 		app.ContentRating,
-		clickhouse.Array(app.DeveloperContacts),
+		clickhouse.Array([]string{ app.DeveloperContacts.Email }),
+		clickhouse.Array([]string{ app.DeveloperContacts.Contacts }),
 		app.PrivacyPolicy,
 	)
 
@@ -64,7 +65,7 @@ func (c *ClickhouseDatabase) InsertBatch(ctx context.Context, apps []*inhuman.Ap
 	}
 	stmt, err := t.PrepareContext(
 		ctx,
-		fmt.Sprintf("insert into apps (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", apps[0].Fields()),
+		fmt.Sprintf("insert into apps (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", apps[0].Fields()),
 	)
 	if err != nil {
 		return err
@@ -92,7 +93,8 @@ func (c *ClickhouseDatabase) InsertBatch(ctx context.Context, apps []*inhuman.Ap
 			v.Version,
 			v.AndroidVersion,
 			v.ContentRating,
-			clickhouse.Array(v.DeveloperContacts),
+			clickhouse.Array([]string{ v.DeveloperContacts.Email }),
+			clickhouse.Array([]string{ v.DeveloperContacts.Contacts }),
 			v.PrivacyPolicy,
 		)
 		if err != nil {
