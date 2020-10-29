@@ -48,7 +48,7 @@ func loadEnvs(e ...string) map[string]string {
 Create new instance of app config
 @Param p : String (path to custom config file.yml)
 */
-func New(p ...string) *Config {
+func New(p ...string) Config {
 	path := "../../../config/dev.yml"
 	if len(p) > 0 {
 		path = p[0]
@@ -59,7 +59,7 @@ func New(p ...string) *Config {
 		panic(err)
 	}
 
-	config := &Config{}
+	config := Config{}
 	if err := yaml.Unmarshal([]byte(data), &config); err != nil {
 		panic(err)
 	}

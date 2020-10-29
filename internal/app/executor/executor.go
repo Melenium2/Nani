@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -18,6 +19,7 @@ import (
 	Дописать вторую часть процесса, в которой мы прогоняем
 		всех девелоперов который спарсили и берем их приложения
 	Логгировать процесс
+	Данные в канале теряются если канцельнуть процесс в рандомный момент времени
 */
 
 type Executor struct {
@@ -92,9 +94,9 @@ func (ex *Executor) storeApps(withKeys bool, bundles ...string) {
 			ex.db <- app
 			if withKeys {
 				go ex.storeKeywords(app)
+				ex.cache.Set("last", bundles[i])
 			}
 		}
-		ex.cache.Set("last", bundles[i])
 	}
 }
 
@@ -128,7 +130,7 @@ func (ex *Executor) saveError(t, bundle string, er error) {
 // selector main loop of channels
 func (ex *Executor) selector() {
 	apps := make([]*inhuman.App, 0)
-	for ex.cancel {
+	for !ex.cancel {
 		select {
 		case t := <-ex.db:
 			switch data := t.(type) {
@@ -137,13 +139,14 @@ func (ex *Executor) selector() {
 				if len(apps) > 50 {
 					err := ex.repository.InsertBatch(ex.ctx, apps)
 					if err != nil {
-						ex.saveError("db", "", err)
+						ex.saveError("Db", "", err)
 						continue
 					}
 					apps = nil
 				}
 			case inhuman.Keywords:
-				keys := SortKeywords(data)[:ex.config.KeysCount]
+				s := int(math.Min(float64(ex.config.KeysCount), float64(len(data))))
+				keys := SortKeywords(data)[:s]
 				for _, k := range keys {
 					err := ex.keyCache.Set(k)
 					if err != nil {
@@ -158,7 +161,7 @@ func (ex *Executor) selector() {
 	for _, app := range apps {
 		err := ex.repository.Insert(ex.ctx, app)
 		if err != nil {
-			ex.saveError("db", "", err)
+			ex.saveError("Db", "", err)
 			continue
 		}
 	}
@@ -166,7 +169,7 @@ func (ex *Executor) selector() {
 
 // AppsBatch scrap new applications while keys still remain
 func (ex *Executor) appsBatch() {
-	for ex.cancel {
+	for !ex.cancel {
 		key, err := ex.keyCache.Next()
 		if err != nil {
 			if err.Error() == "keywords are out of range" {
@@ -195,7 +198,7 @@ func (ex *Executor) Stop() {
 	defer cancel()
 	ex.cancel = true
 	ex.ctx = ctx
-	ex.wait <- struct{}{}
+	//ex.wait <- struct{}{}
 }
 
 // Create new instance of Executor
