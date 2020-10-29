@@ -16,6 +16,7 @@ type ExternalApi interface {
 	Keys(title, description, shortDescription, reviews string) (Keywords, error)
 	Flow(key string) ([]App, error)
 	Endpoint(endpoint string) string
+	DevApps(devid string) ([]App, error)
 	Request(endpoint, method string, data interface{}, response interface{}) error
 }
 
@@ -73,6 +74,25 @@ func (api *InhumanApi) Flow(key string) ([]App, error) {
 		"hl": api.config.Hl,
 		"gl": api.config.Gl,
 		"count": api.config.AppsCount,
+	}, &apps)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return apps, nil
+}
+
+// DevApps send request to external api to get developer apps
+// @devid: string (developer id)
+// @return: []App (applications), error (Error)
+func (api *InhumanApi) DevApps(devid string) ([]App, error) {
+	apps := make([]App, 0)
+	err := api.Request(api.Endpoint("devapps"),"post", map[string]interface{} {
+		"query": devid,
+		"hl": api.config.Hl,
+		"gl": api.config.Gl,
+		"count": 100,
 	}, &apps)
 
 	if err != nil {

@@ -1,13 +1,14 @@
 package db_test
 
 import (
+	config2 "Nani/internal/app/config"
 	"Nani/internal/app/db"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestConnectionUrl_ShouldReturnRightUrl_NoErrors(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Database: "default",
 		User:     "admin",
 		Password: "123456",
@@ -22,7 +23,7 @@ func TestConnectionUrl_ShouldReturnRightUrl_NoErrors(t *testing.T) {
 }
 
 func TestConnectionUrl_ShouldReturnUrlWithoutUserAndPass_NoError(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Database: "default",
 		User:     "admin",
 		Password: "",
@@ -37,7 +38,7 @@ func TestConnectionUrl_ShouldReturnUrlWithoutUserAndPass_NoError(t *testing.T) {
 }
 
 func TestConnectionUrl_ShouldReturnErrorCozAddressIsEmpty_Error(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Database: "default",
 		User:     "admin",
 		Password: "123456",
@@ -53,7 +54,7 @@ func TestConnectionUrl_ShouldReturnErrorCozAddressIsEmpty_Error(t *testing.T) {
 }
 
 func TestConnectionUrl_ShouldReturnErrorCozPortIsEmpty_Error(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Database: "default",
 		User:     "admin",
 		Password: "123456",
@@ -69,7 +70,7 @@ func TestConnectionUrl_ShouldReturnErrorCozPortIsEmpty_Error(t *testing.T) {
 }
 
 func TestConnectionUrl_ShouldReturnDefaultDbIfNoPresented_NoError(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Database: "",
 		User:     "admin",
 		Password: "123456",
@@ -84,7 +85,7 @@ func TestConnectionUrl_ShouldReturnDefaultDbIfNoPresented_NoError(t *testing.T) 
 }
 
 func TestConnect_ShouldEstablishNewConnectionToDatabase_NoError(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Password: "123456",
 		Address:  "192.168.99.100",
 		Port:     "8123",
@@ -98,7 +99,7 @@ func TestConnect_ShouldEstablishNewConnectionToDatabase_NoError(t *testing.T) {
 }
 
 func TestConnect_ShouldReturnErrorCozDbCanNotEstablishConnection_NoError(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Address:  "192.168.99.101",
 		Port:     "8123",
 		Schema:   "",
@@ -111,7 +112,7 @@ func TestConnect_ShouldReturnErrorCozDbCanNotEstablishConnection_NoError(t *test
 }
 
 func TestInitSchema_ShouldCreateNewTableInDatabase_NoError(t *testing.T) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Address:  "192.168.99.100",
 		Port:     "8123",
 		Schema:   "",

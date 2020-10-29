@@ -1,6 +1,7 @@
 package db
 
 import (
+	"Nani/internal/app/config"
 	"Nani/internal/app/inhuman"
 	"context"
 	"database/sql"
@@ -109,7 +110,7 @@ func (c *ClickhouseDatabase) InsertBatch(ctx context.Context, apps []*inhuman.Ap
 	return nil
 }
 
-func New(config Config) *ClickhouseDatabase {
+func New(config config.DBConfig) *ClickhouseDatabase {
 	if config.Connection == nil {
 		url, err := ConnectionUrl(config)
 		if err != nil {

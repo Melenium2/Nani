@@ -2,3 +2,10 @@ api_url: http://localhost:1117/api/v1
 hl: ru
 gl: ru
 envs: [api_key]
+database:
+  name: default
+  user:
+  password:
+  address: 192.168.99.100
+  port: 8123
+  schema: ../../../config/schema.sql

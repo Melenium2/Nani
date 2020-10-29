@@ -98,6 +98,22 @@ func (m *inhuman_api_mock) Request(endpoint, method string, data interface{}, re
 	return nil
 }
 
+func (m *inhuman_api_mock) DevApps(devid string) ([]inhuman.App, error) {
+	apps := make([]inhuman.App, 0)
+	err := m.Request(m.Endpoint("devapps"), "post", map[string]interface{} {
+		"query": devid,
+		"hl":    "en",
+		"gl":    "us",
+		"count": 100,
+	}, &apps)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return apps, nil
+}
+
 /*
 Successful test
 ============================================================================================
@@ -129,7 +145,7 @@ func TestRequest_ShouldMakeRequestToExternalApi_NoErrors(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestKeys_ShouldReturnObjectWithKeywrods_NoErrors(t *testing.T) {
+func TestKeys_ShouldReturnObjectWithKeywords_NoErrors(t *testing.T) {
 	api := &inhuman_api_mock{
 		ExpectedCode: 200,
 		ExpectedBody: inhuman.Keywords{
@@ -151,6 +167,18 @@ func TestFlow_ShouldReturnListWithApplications_NoError(t *testing.T) {
 		},
 	}
 	apps, err := api.Flow("car")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(apps))
+}
+
+func TestDevApps_ShouldRetrunListOfDeveloperApps_NoError(t *testing.T) {
+	api := &inhuman_api_mock{
+		ExpectedCode: 200,
+		ExpectedBody: []inhuman.App {
+			{ Bundle: "123"}, {Bundle: "qwe"},
+		},
+	}
+	apps, err := api.DevApps("228")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(apps))
 }
@@ -233,6 +261,22 @@ func (m *inhuman_api_mock_fail) Request(endpoint, method string, data interface{
 	return nil
 }
 
+func (m *inhuman_api_mock_fail) DevApps(devid string) ([]inhuman.App, error) {
+	apps := make([]inhuman.App, 0)
+	err := m.Request(m.Endpoint("devapps"), "post", map[string]interface{} {
+		"query": devid,
+		"hl":    "en",
+		"gl":    "us",
+		"count": 100,
+	}, &apps)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return apps, nil
+}
+
 /*
 Unsuccessful test
 ============================================================================================
@@ -308,6 +352,36 @@ func TestFlow_ShouldReturnWrongResultFromRequestIncorrectDataArray_Error(t *test
 	assert.Nil(t, apps)
 }
 
+func TestDevApps_ShouldReturnErrorCode_Error(t *testing.T) {
+	api := &inhuman_api_mock_fail{
+		ExpectedCode:         500,
+		ExpectedResponseBody: `{ "1": "1" }`,
+	}
+	apps, err := api.DevApps("car")
+	assert.Error(t, err)
+	assert.Nil(t, apps)
+}
+
+func TestDevApps_ShouldReturnWrongResult_Error(t *testing.T) {
+	api := &inhuman_api_mock_fail{
+		ExpectedCode:         200,
+		ExpectedResponseBody: `{ "1": "1" }""`,
+	}
+	apps, err := api.DevApps("car")
+	assert.Error(t, err)
+	assert.Nil(t, apps)
+}
+
+func TestDevApps_ShouldReturnErrorCozIncorrectData_Error(t *testing.T) {
+	api := &inhuman_api_mock_fail{
+		ExpectedCode:         404,
+		ExpectedResponseBody: `{ "1": "1" }`,
+	}
+	apps, err := api.DevApps("")
+	assert.Error(t, err)
+	assert.Nil(t, apps)
+}
+
 /*
 =============================================================================
  */
@@ -362,6 +436,18 @@ func TestFlow_ShouldReturnMainPageApps_NoError(t *testing.T) {
 	assert.Greater(t, len(res), c.AppsCount - 30)
 }
 
+func TestDevApps_ShouldReturnAllAppsApplications_NoError(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.App(bundle)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, bundle, res.Bundle)
+
+	apps, err := api.DevApps(res.DeveloperId)
+	assert.NoError(t, err)
+	assert.Greater(t, len(apps), 0)
+}
+
 func TestFlow_ShouldReturnAppsFor10Keys_NoError(t *testing.T) {
 	ti := time.Now()
 	c := Config()
@@ -380,6 +466,27 @@ func TestFlow_ShouldReturnAppsFor10Keys_NoError(t *testing.T) {
 func TestApp_ShouldReturnErrorIfBundleIsWrong_Error(t *testing.T) {
 	api := inhuman.New(Config())
 	res, err := api.App("")
+	assert.Error(t, err)
+	assert.Nil(t, res)
+}
+
+func TestApp_ShouldReturnErrorCozKeyIsIncorrect_Error(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.App("dfghadsvadkasdasdskjdsnkjdna123ad;lmsakda")
+	assert.Error(t, err)
+	assert.Nil(t, res)
+}
+
+func TestDevApps_ShouldReturnErrorCozDevIdIsIncorrect_Error(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.DevApps("dfghadsvadkasdasdskjdsnkjdna123ad;lmsakda")
+	assert.Error(t, err)
+	assert.Nil(t, res)
+}
+
+func TestDevApps_ShouldReturnErrorCozDevIdIsEmpty_Error(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.DevApps("")
 	assert.Error(t, err)
 	assert.Nil(t, res)
 }

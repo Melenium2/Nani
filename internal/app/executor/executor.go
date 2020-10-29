@@ -12,13 +12,21 @@ import (
 	"time"
 )
 
+/*
+	TODO
+	Записывать гео по приложению
+	Дописать вторую часть процесса, в которой мы прогоняем
+		всех девелоперов который спарсили и берем их приложения
+	Логгировать процесс
+*/
+
 type Executor struct {
 	externalApi inhuman.ExternalApi
 	cache       cache.Storage
 	ctx         context.Context
 	repository  db.AppRepository
 	keyCache    cache.KeyStorage
-	config      *config.Config
+	config      config.Config
 	db          databaseCh
 	wait        chan struct{}
 	cancel      bool
@@ -167,7 +175,17 @@ func (ex *Executor) appsBatch() {
 			}
 			continue
 		}
-		ex.storeApps(false, key)
+		res, err := ex.externalApi.Flow(key)
+		if err != nil {
+			ex.saveError("keys", key, err)
+			ex.keyCache.Rollback()
+			continue
+		}
+		bundles := make([]string, len(res))
+		for i := 0; i < len(bundles); i++ {
+			bundles[i] = res[i].Bundle
+		}
+		ex.storeApps(false, bundles...)
 	}
 }
 
@@ -181,9 +199,15 @@ func (ex *Executor) Stop() {
 }
 
 // Create new instance of Executor
-func New(api inhuman.ExternalApi, storage cache.Storage) *Executor {
+func New(api inhuman.ExternalApi, storage cache.Storage, config config.Config) *Executor {
 	return &Executor{
 		externalApi: api,
 		cache:       storage,
+		keyCache:    cache.NewKeyCache(storage),
+		repository:  db.New(config.Database),
+		config:      config,
+		db:          make(databaseCh),
+		wait:        make(chan struct{}),
+		cancel:      false,
 	}
 }

@@ -2,16 +2,28 @@ package config
 
 import (
 	"Nani/internal/app/file"
+	"database/sql"
 	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 )
 
+type DBConfig struct {
+	Database   string `yaml:"name"`
+	User       string `yaml:"user"`
+	Password   string `yaml:"password"`
+	Address    string `yaml:"address"`
+	Port       string `yaml:"port"`
+	Schema     string `yaml:"schema"`
+	Connection *sql.DB
+}
+
 //Application config
 type Config struct {
-	ApiUrl    string `yaml:"api_url"`
-	Hl        string `yaml:"hl"`
-	Gl        string `yaml:"gl"`
+	ApiUrl    string   `yaml:"api_url"`
+	Hl        string   `yaml:"hl"`
+	Gl        string   `yaml:"gl"`
+	Database  DBConfig `yaml:"database"`
 	Key       string
 	KeysCount int
 	AppsCount int

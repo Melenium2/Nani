@@ -1,6 +1,7 @@
 package db
 
 import (
+	config2 "Nani/internal/app/config"
 	"Nani/internal/app/file"
 	"database/sql"
 	"errors"
@@ -8,7 +9,7 @@ import (
 	"time"
 )
 
-func ConnectionUrl(config Config) (string, error) {
+func ConnectionUrl(config config2.DBConfig) (string, error) {
 	url := "http://"
 	if config.User != "" && config.Password != "" {
 		url += config.User + ":" + config.Password + "@"

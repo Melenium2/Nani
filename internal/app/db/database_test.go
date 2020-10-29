@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	config2 "Nani/internal/app/config"
 	"Nani/internal/app/db"
 	"Nani/internal/app/inhuman"
 	"context"
@@ -51,7 +52,7 @@ func MockDb() (*sql.DB, sqlmock.Sqlmock) {
 }
 
 func Db() (*sql.DB, func()) {
-	config := db.Config{
+	config := config2.DBConfig{
 		Database: "default",
 		Address:  "192.168.99.100",
 		Port:     "8123",
@@ -102,7 +103,7 @@ func TestInsertMock_ShouldInsertNewRecordToDb_NoError(t *testing.T) {
 
 	var rep db.AppRepository
 	assert.NotPanics(t, func() {
-		rep = db.New(db.Config{Connection: d})
+		rep = db.New(config2.DBConfig{Connection: d})
 	})
 	assert.NoError(t, rep.Insert(ctx, app))
 
@@ -151,7 +152,7 @@ func TestInsertBatchMock_ShouldInsertNewRecords_NoError(t *testing.T) {
 
 	var rep db.AppRepository
 	assert.NotPanics(t, func() {
-		rep = db.New(db.Config{Connection: d})
+		rep = db.New(config2.DBConfig{Connection: d})
 	})
 	assert.NoError(t, rep.InsertBatch(ctx, apps))
 
@@ -200,7 +201,7 @@ func TestInsertBatchMock_ShouldRiseErrorCozDbConnectionLost_Error(t *testing.T) 
 
 	var rep db.AppRepository
 	assert.NotPanics(t, func() {
-		rep = db.New(db.Config{Connection: d})
+		rep = db.New(config2.DBConfig{Connection: d})
 	})
 	assert.Error(t, rep.InsertBatch(ctx, apps))
 
@@ -213,7 +214,7 @@ func TestInsert_ShouldInsertNewRow_NoError(t *testing.T) {
 	driver, cleaner := Db()
 	defer cleaner()
 
-	repo := db.New(db.Config{ Connection: driver})
+	repo := db.New(config2.DBConfig{ Connection: driver})
 	err := repo.Insert(ctx, App())
 	assert.NoError(t, err)
 
@@ -229,7 +230,7 @@ func TestInsert_ShouldReturnErrorCozDriverClosed_Error(t *testing.T) {
 	driver, cleaner := Db()
 	defer cleaner()
 
-	repo := db.New(db.Config{ Connection: driver})
+	repo := db.New(config2.DBConfig{ Connection: driver})
 	driver.Close()
 	err := repo.Insert(ctx, App())
 	assert.Error(t, err)
@@ -247,7 +248,7 @@ func TestInsertBatch_ShouldInsertSomeItems_NoError(t *testing.T) {
 	defer cleaner()
 
 	apps := []*inhuman.App{ App(), App(), App() }
-	repo := db.New(db.Config{ Connection: driver})
+	repo := db.New(config2.DBConfig{ Connection: driver})
 	err := repo.InsertBatch(ctx, apps)
 	assert.NoError(t, err)
 
