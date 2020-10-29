@@ -1,6 +1,7 @@
 package inhuman_test
 
 import (
+	"Nani/internal/app/config"
 	"Nani/internal/app/inhuman"
 	"bytes"
 	"encoding/json"
@@ -10,7 +11,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 )
 
 type inhuman_api_mock struct {
@@ -303,4 +306,80 @@ func TestFlow_ShouldReturnWrongResultFromRequestIncorrectDataArray_Error(t *test
 	apps, err := api.Flow("car")
 	assert.Error(t, err)
 	assert.Nil(t, apps)
+}
+
+/*
+=============================================================================
+ */
+
+func Config() *config.Config {
+	os.Setenv("api_key", "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61")
+	c := config.New()
+	c.AppsCount = 250
+	c.KeysCount = 10
+
+	return c
+}
+
+var bundle = "com.and.wareternal"
+
+func TestEndpoint_ShouldConcatDefaultUrlAndEndpoint_NoError(t *testing.T) {
+	c := Config()
+	api := inhuman.New(c)
+	res := api.Endpoint("bundle")
+	assert.Equal(t, c.ApiUrl + "/bundle", res)
+}
+
+func TestApp_ShouldReturnAppInformationFromApi_NoError(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.App(bundle)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, bundle, res.Bundle)
+}
+
+func TestKeys_ShouldReturnKeywordsFromGivenText_NoError(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.App(bundle)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+
+	assert.NotEmpty(t, res.Title)
+	assert.NotEmpty(t, res.Description)
+	assert.NotEmpty(t, res.ShortDescription)
+
+	keys, err := api.Keys(res.Title, res.Description, res.ShortDescription, "")
+	assert.Greater(t, len(keys), 0)
+}
+
+func TestFlow_ShouldReturnMainPageApps_NoError(t *testing.T) {
+	c := Config()
+	api := inhuman.New(c)
+	res, err := api.Flow("car")
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Greater(t, len(res), 0)
+	assert.Greater(t, len(res), c.AppsCount - 30)
+}
+
+func TestFlow_ShouldReturnAppsFor10Keys_NoError(t *testing.T) {
+	ti := time.Now()
+	c := Config()
+	api := inhuman.New(c)
+	keys := []string {"car", "cart", "car games", "game for kids", "russian mobiles", "anime", "anime games", "wallpapers", "key", "door"}
+	for _, k := range keys {
+		res, err := api.Flow(k)
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Greater(t, len(res), 0)
+		t.Log(k)
+	}
+	t.Log(time.Now().Sub(ti).Seconds() * 6000)
+}
+
+func TestApp_ShouldReturnErrorIfBundleIsWrong_Error(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.App("")
+	assert.Error(t, err)
+	assert.Nil(t, res)
 }

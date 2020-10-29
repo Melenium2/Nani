@@ -109,13 +109,16 @@ func (api *InhumanApi) Request(endpoint, method string, data interface{}, respon
 	}
 	client := &http.Client{}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Security %s", api.config.Key))
+	req.Header.Set("Authorization", api.config.Key)
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode > 200 {
+		return fmt.Errorf("external api response with status %d", resp.StatusCode)
+	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return err
@@ -125,5 +128,7 @@ func (api *InhumanApi) Request(endpoint, method string, data interface{}, respon
 }
 
 func New(config *config.Config) *InhumanApi {
-	return &InhumanApi{}
+	return &InhumanApi{
+		config: config,
+	}
 }

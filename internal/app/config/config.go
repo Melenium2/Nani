@@ -9,14 +9,14 @@ import (
 
 //Application config
 type Config struct {
-	ApiUrl    string `yaml:api_url`
-	Hl        string `yaml:hl`
-	Gl        string `yaml:gl`
+	ApiUrl    string `yaml:"api_url"`
+	Hl        string `yaml:"hl"`
+	Gl        string `yaml:"gl"`
 	Key       string
 	KeysCount int
 	AppsCount int
 
-	envs []string `yaml: ,flow`
+	Envs []string `yaml:",flow"`
 }
 
 /**
@@ -37,22 +37,22 @@ Create new instance of app config
 @Param p : String (path to custom config file.yml)
 */
 func New(p ...string) *Config {
-	path := "/config/dev.yml"
+	path := "../../../config/dev.yml"
 	if len(p) > 0 {
 		path = p[0]
 	}
 
 	data, err := file.ReadAll(path)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	var config *Config
+	config := &Config{}
 	if err := yaml.Unmarshal([]byte(data), &config); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	envs := loadEnvs(config.envs...)
+	envs := loadEnvs(config.Envs...)
 
 	v, ok := envs["api_key"]
 	if !ok {
