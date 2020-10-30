@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"time"
 )
 
 /*
@@ -20,6 +19,9 @@ import (
 		всех девелоперов который спарсили и берем их приложения
 	Логгировать процесс
 	Данные в канале теряются если канцельнуть процесс в рандомный момент времени
+
+	Тесты для дб. Что будет если попробывать сгенерить схему несколько раз
+	Скипать интеграционные тесты если есть на то причины
 */
 
 type Executor struct {
@@ -60,8 +62,9 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 		return errors.New("can not convert bundles")
 	}
 	ex.storeApps(true, bundles[startAt:]...)
-
 	<-ex.wait
+
+	// Second step
 	return nil
 }
 
@@ -130,31 +133,28 @@ func (ex *Executor) saveError(t, bundle string, er error) {
 // selector main loop of channels
 func (ex *Executor) selector() {
 	apps := make([]*inhuman.App, 0)
-	for !ex.cancel {
-		select {
-		case t := <-ex.db:
-			switch data := t.(type) {
-			case *inhuman.App:
-				apps = append(apps, data)
-				if len(apps) > 50 {
-					err := ex.repository.InsertBatch(ex.ctx, apps)
-					if err != nil {
-						ex.saveError("Db", "", err)
-						continue
-					}
-					apps = nil
+
+	for t := range ex.db {
+		switch data := t.(type) {
+		case *inhuman.App:
+			apps = append(apps, data)
+			if len(apps) > 50 {
+				err := ex.repository.InsertBatch(ex.ctx, apps)
+				if err != nil {
+					ex.saveError("Db", "", err)
+					continue
 				}
-			case inhuman.Keywords:
-				s := int(math.Min(float64(ex.config.KeysCount), float64(len(data))))
-				keys := SortKeywords(data)[:s]
-				for _, k := range keys {
-					err := ex.keyCache.Set(k)
-					if err != nil {
-						ex.saveError("keyCache", "", err)
-					}
+				apps = nil
+			}
+		case inhuman.Keywords:
+			s := int(math.Min(float64(ex.config.KeysCount), float64(len(data))))
+			keys := SortKeywords(data)[:s]
+			for _, k := range keys {
+				err := ex.keyCache.Set(k)
+				if err != nil {
+					ex.saveError("keyCache", "", err)
 				}
 			}
-		default:
 		}
 	}
 
@@ -173,8 +173,7 @@ func (ex *Executor) appsBatch() {
 		key, err := ex.keyCache.Next()
 		if err != nil {
 			if err.Error() == "keywords are out of range" {
-				ex.Stop()
-				return
+				break
 			}
 			continue
 		}
@@ -190,15 +189,20 @@ func (ex *Executor) appsBatch() {
 		}
 		ex.storeApps(false, bundles...)
 	}
+	ex.wait <- struct{}{}
 }
 
 // Stop scraping
 func (ex *Executor) Stop() {
-	ctx, cancel := context.WithTimeout(ex.ctx, time.Second*15)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(ex.ctx, time.Second*15)
+	//ex.ctx = ctx
+	//defer cancel()
 	ex.cancel = true
-	ex.ctx = ctx
 	//ex.wait <- struct{}{}
+	go func() {
+		<-ex.wait
+		close(ex.db)
+	}()
 }
 
 // Create new instance of Executor

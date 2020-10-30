@@ -22,7 +22,7 @@ type ExternalApi interface {
 
 // Api for interaction with external service (Enterprise Api Service)
 type InhumanApi struct {
-	config *config.Config
+	config config.Config
 }
 
 // Get application info by bundle from external api
@@ -147,7 +147,7 @@ func (api *InhumanApi) Request(endpoint, method string, data interface{}, respon
 	return nil
 }
 
-func New(config *config.Config) *InhumanApi {
+func New(config config.Config) *InhumanApi {
 	return &InhumanApi{
 		config: config,
 	}

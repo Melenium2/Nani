@@ -3,6 +3,7 @@ package executor
 import (
 	"Nani/internal/app/cache"
 	"Nani/internal/app/config"
+	"Nani/internal/app/db"
 	"Nani/internal/app/inhuman"
 	"context"
 	"fmt"
@@ -219,6 +220,7 @@ func TestSelectorMock_ShouldSaveAppsIfApplicationCanceled_NoError(t *testing.T) 
 	}
 
 	ex.cancel = true
+	close(ex.db)
 
 	time.Sleep(time.Second * 3)
 
@@ -237,7 +239,7 @@ func TestAppsBatchMock_ShouldStoreApplicationDataFromMainPage_NoError(t *testing
 		externalApi: mock_api{},
 		keyCache:    cache.NewKeyCache(c),
 		ctx:         ctx,
-		wait:        make(chan struct{}),
+		wait:        make(chan struct{}, 1),
 	}
 	go ex.selector()
 
@@ -246,14 +248,180 @@ func TestAppsBatchMock_ShouldStoreApplicationDataFromMainPage_NoError(t *testing
 	ex.keyCache.Set("123")
 	go func() {
 		time.Sleep(time.Second * 3)
-		ex.cancel = true
+		ex.Stop()
 	}()
 	ex.appsBatch()
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 4)
 	assert.Equal(t, 9, len(r.Db))
 
 	k, err := ex.keyCache.Next()
 	assert.Error(t, err)
 	assert.Empty(t, k)
+}
+
+func TestStoreApps_ShouldReturnCorrectObject_NoError(t *testing.T) {
+	c := &mock_storage{cache: make(map[string]interface{})}
+	r := &mock_repo{Db: make(map[int]*inhuman.App)}
+	conf := config.New()
+	conf.KeysCount = 10
+	conf.Key = "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61"
+
+	ex := Executor{
+		cache:       c,
+		externalApi: inhuman.New(conf),
+		keyCache:    cache.NewKeyCache(c),
+		repository:  r,
+		db:          make(databaseCh),
+		config:      conf,
+	}
+	go ex.selector()
+
+	bundles := []string{"com.dragonscapes.global", "com.funplus.townkins.global", "com.bigpoint.wefarm", "com.SocialInfinite.FNFamilyRelics"}
+	ex.storeApps(false, bundles...)
+	ex.cancel = true
+	close(ex.db)
+
+	time.Sleep(time.Second * 1)
+
+	assert.Greater(t, len(r.Db), 0)
+	assert.Equal(t, len(bundles), len(r.Db))
+	e, err := c.GetV("errors")
+	assert.Error(t, err)
+	assert.Nil(t, e)
+}
+
+func TestStoreApps_ShouldGetApplicationAndSaveToDb_NoError(t *testing.T) {
+	conf := config.New()
+	conf.KeysCount = 10
+	conf.Key = "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61"
+
+	c := &mock_storage{cache: make(map[string]interface{})}
+	url, _ := db.ConnectionUrl(conf.Database)
+	conn, _ := db.Connect(url)
+
+	conf.Database.Connection = conn
+
+	ex := Executor{
+		cache:       c,
+		externalApi: inhuman.New(conf),
+		keyCache:    cache.NewKeyCache(c),
+		repository:  db.New(conf.Database),
+		db:          make(databaseCh),
+		config:      conf,
+		ctx:         context.Background(),
+	}
+	go ex.selector()
+
+	bundles := []string{"com.dragonscapes.global", "com.funplus.townkins.global", "com.bigpoint.wefarm", "com.SocialInfinite.FNFamilyRelics"}
+	ex.storeApps(false, bundles...)
+	ex.cancel = true
+	close(ex.db)
+
+	time.Sleep(time.Second * 1)
+
+	row := conn.QueryRow(fmt.Sprint("select count(*) from apps"))
+	assert.NotNil(t, row)
+	var count int
+	err := row.Scan(&count)
+	assert.NoError(t, err)
+
+	assert.Greater(t, count, 0)
+	assert.Equal(t, len(bundles), count)
+
+	e, err := c.GetV("errors")
+	assert.Error(t, err)
+	assert.Nil(t, e)
+
+	conn.Exec(fmt.Sprint("drop table apps"))
+}
+
+func TestStoreKeywords_ShouldStoreKeywordsToMockCache_NoError(t *testing.T) {
+	conf := config.New()
+	conf.KeysCount = 10
+	conf.Key = "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61"
+
+	c := &mock_storage{cache: make(map[string]interface{})}
+	ex := Executor{
+		cache:       c,
+		externalApi: inhuman.New(conf),
+		keyCache:    cache.NewKeyCache(c),
+		repository:  &mock_repo{},
+		db:          make(databaseCh),
+		config:      conf,
+		ctx:         context.Background(),
+	}
+	go ex.selector()
+
+	app := &inhuman.App{
+		Title:            "Dragonscapes Приключение",
+		Description:      "Пустись в тропическое приключение на таинственные новые острова и найди драконов!<br><br>Присоединяйся к своей лучшей подруге, Мии, и её команде в их тропическом приключении на отдалённом острове! Там ты найдёшь и соберешь множество новых драконов и построишь для них уютный дом на твоём острове. Сколько драконов ты сумеешь найти? Давай выясним!<br><br>&quot;Dragonscapes Приключение&quot; - это казуальная игра, основанная на исследовании территорий за энергию, где ты сможешь находить и соединять драконов, чтобы открывать новые виды. Построй для себя дом на тропическом отрове и произведи различные продукты, чтобы выполнить заказы, и не забудь присоединиться к Мии в её приключениях на новых островах!<br><br>Примечания по приложению:<br><br>• Для этой игры необходимо активное интернет-соединение. Пожалуйста, удостоверься, что твоё устройство подключено к интернету во время игры;<br><br>• Ты можешь скачать &quot;Dragonscapes Приключение&quot; и играть совершенно бесплатно. Тем не менее, некоторые предметы в игре можно приобрести за реальные деньги. Если ты не хочешь пользоваться данной функцией, пожалуйста, отключи покупки в приложениях через настройки устройства.",
+		ShortDescription: "Пустись в тропическое приключение на таинственных островах и найди драконов!",
+	}
+
+	ex.storeKeywords(app)
+
+	time.Sleep(time.Second * 1)
+
+	for i := 0; i < conf.KeysCount; i++ {
+		key, err := ex.keyCache.Next()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, key)
+	}
+
+	e, err := c.GetV("errors")
+	assert.Error(t, err)
+	assert.Nil(t, e)
+}
+
+func TestAppBatch_ShouldSaveSomeApplicationToDbWhileTimeIsNotExpired(t *testing.T) {
+	conf := config.New()
+	conf.KeysCount = 10
+	conf.AppsCount = 10
+	conf.Key = "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61"
+
+	c := &mock_storage{cache: make(map[string]interface{})}
+	url, _ := db.ConnectionUrl(conf.Database)
+	conn, _ := db.Connect(url)
+
+	conf.Database.Connection = conn
+
+	ex := &Executor{
+		cache:       c,
+		externalApi: inhuman.New(conf),
+		keyCache:    cache.NewKeyCache(c),
+		repository:  db.New(conf.Database),
+		db:          make(databaseCh, 1),
+		config:      conf,
+		ctx:         context.Background(),
+		wait:        make(chan struct{}, 1),
+	}
+	go ex.selector()
+
+	keywords := []string{"car", "car games", "execute power", "power rangers"}
+	for _, k := range keywords {
+		ex.keyCache.Set(k)
+	}
+
+	go func() {
+		time.Sleep(time.Second * 5)
+		ex.Stop()
+	}()
+	ex.appsBatch()
+
+	time.Sleep(time.Second * 2)
+
+	row := conn.QueryRow(fmt.Sprint("select count(*) from apps"))
+	assert.NotNil(t, row)
+	var count int
+	err := row.Scan(&count)
+	assert.NoError(t, err)
+
+	assert.Greater(t, count, 0)
+
+	e, err := c.GetV("errors")
+	assert.Error(t, err)
+	assert.Nil(t, e)
+
+	conn.Exec(fmt.Sprint("drop table apps"))
 }

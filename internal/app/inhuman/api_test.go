@@ -386,7 +386,7 @@ func TestDevApps_ShouldReturnErrorCozIncorrectData_Error(t *testing.T) {
 =============================================================================
  */
 
-func Config() *config.Config {
+func Config() config.Config {
 	os.Setenv("api_key", "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61")
 	c := config.New()
 	c.AppsCount = 250
