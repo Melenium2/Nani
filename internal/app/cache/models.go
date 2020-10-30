@@ -9,4 +9,3 @@ type Item struct {
 	V       interface{} `json:"V,omitempty"`
 	Expired int64       `json:"Expired,omitempty"`
 }
-

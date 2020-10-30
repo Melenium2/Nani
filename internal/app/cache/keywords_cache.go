@@ -1,6 +1,9 @@
 package cache
 
-import "errors"
+import (
+	"errors"
+	"log"
+)
 
 // KeyStorage interface who manages the instance of KeywordCache
 type KeyStorage interface {
@@ -24,7 +27,7 @@ func (kc *KeywordsCache) Set(key string) error {
 		kc.cache.Set(kc.key, []Keyword{{Pos: len(keys) + 1, Key: key}})
 		return nil
 	}
-
+	log.Print("next string ", key)
 	kc.cache.Set(kc.key, append(keys, Keyword{Pos: len(keys) + 1, Key: key}))
 	return nil
 }

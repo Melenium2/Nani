@@ -414,7 +414,7 @@ func TestApp_ShouldReturnAppInformationFromApi_NoError(t *testing.T) {
 
 func TestKeys_ShouldReturnKeywordsFromGivenText_NoError(t *testing.T) {
 	api := inhuman.New(Config())
-	res, err := api.App(bundle)
+	res, err := api.App("app.staker.seabattle")
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 

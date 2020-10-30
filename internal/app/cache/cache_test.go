@@ -51,12 +51,6 @@ func TestLoad_ShouldStoreAllJsonToCache_NoError(t *testing.T) {
 	assert.Equal(t, "value", v.(string))
 }
 
-func TestLoad_ShouldThrowPanicCozFileNotFound_Error(t *testing.T) {
-	assert.Panics(t, func() {
-		cache.New(false)
-	})
-}
-
 func TestLoad_ShouldThrowPanicCozInalidJosn_Erro(t *testing.T) {
 	assert.Panics(t, func() {
 		j, _ := json.Marshal(`{"123" "1321323}`)

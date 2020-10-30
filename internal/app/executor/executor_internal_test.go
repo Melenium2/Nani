@@ -7,6 +7,7 @@ import (
 	"Nani/internal/app/inhuman"
 	"context"
 	"fmt"
+	murlog "github.com/Melenium2/Murlog"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"strings"
@@ -97,6 +98,7 @@ func TestDeclareTaskMock_ShouldLoadToCacheAllBundlesFromFile_NoError(t *testing.
 	ex := Executor{
 		externalApi: mock_api{},
 		cache:       &mock_storage{cache: make(map[string]interface{})},
+		logger:      murlog.NewNopLogger(),
 	}
 
 	err := ex.declareTask("../../../bundles.txt")
@@ -120,6 +122,7 @@ func TestStoreAppsMock_ShouldStoreAllAppsInADb_NoError(t *testing.T) {
 		externalApi: mock_api{},
 		repository:  r,
 		db:          make(databaseCh),
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 	apps := make([]string, 0)
@@ -142,6 +145,7 @@ func TestStoreAppsMock_ShouldStartStoreKeywordFunctionAndStoreBothValues_NoError
 		repository:  r,
 		db:          make(databaseCh),
 		config:      config.Config{KeysCount: 10},
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 	apps := make([]string, 0)
@@ -171,6 +175,7 @@ func TestStoreKeywordsMock_ShouldStoreKeywordsToCache_NoError(t *testing.T) {
 		keyCache:    cache.NewKeyCache(c),
 		db:          make(databaseCh),
 		config:      config.Config{KeysCount: 10},
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 	ex.storeKeywords(&inhuman.App{})
@@ -185,11 +190,12 @@ func TestStoreKeywordsMock_ShouldStoreKeywordsToCache_NoError(t *testing.T) {
 
 func TestSaveErrorMock_ShouldSaveNewErrorToCache_NoError(t *testing.T) {
 	ex := Executor{
-		cache: &mock_storage{cache: make(map[string]interface{})},
+		cache:  &mock_storage{cache: make(map[string]interface{})},
+		logger: murlog.NewNopLogger(),
 	}
 
-	ex.saveError("bundle", "com.1", fmt.Errorf("error1"))
-	ex.saveError("bundle", "com.2", fmt.Errorf("error2"))
+	ex.saveError("Bundle", "com.1", fmt.Errorf("error1"))
+	ex.saveError("Bundle", "com.2", fmt.Errorf("error2"))
 	ex.saveError("keys", "keyword", fmt.Errorf("error1"))
 
 	e, err := ex.cache.GetV("errors")
@@ -197,13 +203,13 @@ func TestSaveErrorMock_ShouldSaveNewErrorToCache_NoError(t *testing.T) {
 	assert.NotNil(t, e)
 	ers := e.([]ExecutorError)
 
-	assert.Equal(t, "bundle", ers[0].t)
-	assert.Equal(t, "bundle", ers[1].t)
-	assert.Equal(t, "keys", ers[2].t)
+	assert.Equal(t, "Bundle", ers[0].T)
+	assert.Equal(t, "Bundle", ers[1].T)
+	assert.Equal(t, "keys", ers[2].T)
 
-	assert.Equal(t, "com.1", ers[0].bundle)
-	assert.Equal(t, "com.2", ers[1].bundle)
-	assert.Equal(t, "keyword", ers[2].bundle)
+	assert.Equal(t, "com.1", ers[0].Bundle)
+	assert.Equal(t, "com.2", ers[1].Bundle)
+	assert.Equal(t, "keyword", ers[2].Bundle)
 }
 
 func TestSelectorMock_ShouldSaveAppsIfApplicationCanceled_NoError(t *testing.T) {
@@ -212,6 +218,7 @@ func TestSelectorMock_ShouldSaveAppsIfApplicationCanceled_NoError(t *testing.T) 
 		db:         make(databaseCh),
 		config:     config.Config{KeysCount: 10},
 		repository: r,
+		logger:     murlog.NewNopLogger(),
 	}
 	go ex.selector()
 
@@ -240,17 +247,16 @@ func TestAppsBatchMock_ShouldStoreApplicationDataFromMainPage_NoError(t *testing
 		keyCache:    cache.NewKeyCache(c),
 		ctx:         ctx,
 		wait:        make(chan struct{}, 1),
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 
 	ex.keyCache.Set("123")
 	ex.keyCache.Set("123")
 	ex.keyCache.Set("123")
-	go func() {
-		time.Sleep(time.Second * 3)
-		ex.Stop()
-	}()
+
 	ex.appsBatch()
+	ex.Stop()
 
 	time.Sleep(time.Second * 4)
 	assert.Equal(t, 9, len(r.Db))
@@ -274,6 +280,7 @@ func TestStoreApps_ShouldReturnCorrectObject_NoError(t *testing.T) {
 		repository:  r,
 		db:          make(databaseCh),
 		config:      conf,
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 
@@ -310,6 +317,7 @@ func TestStoreApps_ShouldGetApplicationAndSaveToDb_NoError(t *testing.T) {
 		db:          make(databaseCh),
 		config:      conf,
 		ctx:         context.Background(),
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 
@@ -350,6 +358,7 @@ func TestStoreKeywords_ShouldStoreKeywordsToMockCache_NoError(t *testing.T) {
 		db:          make(databaseCh),
 		config:      conf,
 		ctx:         context.Background(),
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 
@@ -395,6 +404,7 @@ func TestAppBatch_ShouldSaveSomeApplicationToDbWhileTimeIsNotExpired(t *testing.
 		config:      conf,
 		ctx:         context.Background(),
 		wait:        make(chan struct{}, 1),
+		logger:      murlog.NewNopLogger(),
 	}
 	go ex.selector()
 
@@ -403,11 +413,8 @@ func TestAppBatch_ShouldSaveSomeApplicationToDbWhileTimeIsNotExpired(t *testing.
 		ex.keyCache.Set(k)
 	}
 
-	go func() {
-		time.Sleep(time.Second * 5)
-		ex.Stop()
-	}()
 	ex.appsBatch()
+	ex.Stop()
 
 	time.Sleep(time.Second * 2)
 

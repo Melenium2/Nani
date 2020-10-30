@@ -84,7 +84,8 @@ func (c *Cache) load() {
 		f := file.New(c.cachename)
 		b, err := f.ReadAll()
 		if err != nil {
-			panic(err)
+			log.Print("File not exist")
+			return
 		}
 
 		err = json.Unmarshal(b, &c.store)

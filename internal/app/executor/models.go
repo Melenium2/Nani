@@ -1,9 +1,9 @@
 package executor
 
 type ExecutorError struct {
-	t      string
-	er     error
-	bundle string
+	T      string `json:"t,omitempty"`
+	Er     error  `json:"er,omitempty"`
+	Bundle string `json:"bundle,omitempty"`
 }
 
 type databaseCh chan interface{}

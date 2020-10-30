@@ -4,23 +4,29 @@ import (
 	"Nani/internal/app/cache"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
+	"sync"
 	"testing"
 )
 
 type mockCache struct {
 	cache map[string]interface{}
+	mutex sync.Mutex
 }
 
 func (m *mockCache) Set(key string, value interface{}) {
+	m.mutex.Lock()
 	m.cache[key] = value
+	m.mutex.Unlock()
 }
 
 func (m *mockCache) GetV(key string) (interface{}, error) {
+	//m.mutex.Lock()
 	v, ok := m.cache[key]
 	if !ok {
 		return nil, fmt.Errorf("error key")
 	}
-
+	//m.mutex.Unlock()
 	return v, nil
 }
 
@@ -90,14 +96,14 @@ func TestRollback_ShouldRollbackToPrevPosition_NoErrors(t *testing.T) {
 	assert.NoError(t, kc.Set("kry3"))
 	str, err := kc.Next()
 	assert.NoError(t, err)
-	assert.Equal(t,"kry1", str)
+	assert.Equal(t, "kry1", str)
 	str, err = kc.Next()
 	assert.NoError(t, err)
-	assert.Equal(t,"kry2", str)
+	assert.Equal(t, "kry2", str)
 	assert.NoError(t, kc.Rollback())
 	str, err = kc.Next()
 	assert.NoError(t, err)
-	assert.Equal(t,"kry2", str)
+	assert.Equal(t, "kry2", str)
 }
 
 func TestRollback_ShouldReturnNoErrorIfCacheIsEmpty_NoError(t *testing.T) {
@@ -106,6 +112,32 @@ func TestRollback_ShouldReturnNoErrorIfCacheIsEmpty_NoError(t *testing.T) {
 	assert.NoError(t, kc.Rollback())
 }
 
+func TestSet_ShouldCorrectSetKeywordsWithManyGoroutines_NoError(t *testing.T) {
+	c := &mockCache{
+		cache: make(map[string]interface{}),
+	}
+	kc := cache.NewKeyCache(c)
+	var keys []string
+	for i := 0; i < 100; i++ {
+		keys = append(keys, fmt.Sprintf("key=%d", rand.Int()))
+	}
 
+	var wg sync.WaitGroup
+	for i := 0; i < 30; i++ {
+		wg.Add(1)
+		go func(ar []string) {
+			for _, v := range ar {
+				assert.NoError(t, kc.Set(v))
+			}
+			wg.Done()
+		}(keys)
+	}
+	wg.Wait()
 
+	keysInt, _ := c.cache["_keys"]
+	k := keysInt.([]cache.Keyword)
 
+	for _, v := range k {
+		println(v.Key)
+	}
+}
