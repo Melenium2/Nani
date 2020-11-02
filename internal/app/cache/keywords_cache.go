@@ -2,7 +2,7 @@ package cache
 
 import (
 	"errors"
-	"log"
+	"fmt"
 )
 
 // KeyStorage interface who manages the instance of KeywordCache
@@ -14,26 +14,32 @@ type KeyStorage interface {
 
 // KeywordCache manages cache for storing key data
 type KeywordsCache struct {
-	cache Storage
-	key   string
-	next  string
+	cache   Storage
+	key     string
+	next    string
+	isEmpty bool
 }
 
 // Set new key to the cache
 func (kc *KeywordsCache) Set(key string) error {
+	kc.isEmpty = false
 	keysIn, err := kc.cache.GetV(kc.key)
 	keys, ok := keysIn.([]Keyword)
 	if err != nil || !ok {
 		kc.cache.Set(kc.key, []Keyword{{Pos: len(keys) + 1, Key: key}})
 		return nil
 	}
-	log.Print("next string ", key)
+
 	kc.cache.Set(kc.key, append(keys, Keyword{Pos: len(keys) + 1, Key: key}))
 	return nil
 }
 
 // Get Next key from cache keywords slice
 func (kc *KeywordsCache) Next() (string, error) {
+	if kc.isEmpty {
+		return "", fmt.Errorf("keywords cache is empty")
+	}
+
 	keyIn, err := kc.cache.GetV(kc.next)
 	if err != nil {
 		kc.cache.Set(kc.next, 0)
@@ -43,11 +49,12 @@ func (kc *KeywordsCache) Next() (string, error) {
 		}
 		return k.Key, nil
 	}
-	key := keyIn.(int) + 1
 
+	key := getKey(keyIn) + 1
 
 	keyword, err := kc.get(key)
 	if err != nil {
+		kc.isEmpty = true
 		return "", errors.New("keywords are out of range")
 	}
 
@@ -62,13 +69,13 @@ func (kc *KeywordsCache) Rollback() error {
 	if err != nil {
 		return nil
 	}
-	key := keyIn.(int)
+	key := getKey(keyIn)
 
 	if key == 0 {
 		return nil
 	}
 
-	kc.cache.Set(kc.next, key - 1)
+	kc.cache.Set(kc.next, key-1)
 	return nil
 }
 
@@ -76,7 +83,7 @@ func (kc *KeywordsCache) Rollback() error {
 func (kc *KeywordsCache) get(i int) (Keyword, error) {
 	keyIn, err := kc.cache.GetV(kc.key)
 	if err != nil {
-		return Keyword{}, errors.New("keywords cache are empty")
+		return Keyword{}, errors.New("keywords cache is empty")
 	}
 	key, ok := keyIn.([]Keyword)
 	if !ok {
@@ -90,12 +97,26 @@ func (kc *KeywordsCache) get(i int) (Keyword, error) {
 	return key[i], nil
 }
 
+func getKey(k interface{}) int {
+	var num int
+	switch n := k.(type) {
+	case float64:
+		num = int(n)
+	case int:
+		num = n
+	default:
+	}
+
+	return num
+}
+
 // Create new instance of keywordsCache
 func NewKeyCache(cache Storage) *KeywordsCache {
-	c :=  &KeywordsCache{
+	c := &KeywordsCache{
 		cache: cache,
 		key:   "_keys",
 		next:  "_keys_next",
+		isEmpty: true,
 	}
 	return c
 }

@@ -490,3 +490,13 @@ func TestDevApps_ShouldReturnErrorCozDevIdIsEmpty_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, res)
 }
+
+func TestDevApps_ShouldReturnDevAppsBundles_NoError(t *testing.T) {
+	api := inhuman.New(Config())
+	res, err := api.DevApps("7842996855899014066")
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	for _, v := range res {
+		assert.NotEmpty(t, v.DeveloperId)
+	}
+}

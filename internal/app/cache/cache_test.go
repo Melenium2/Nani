@@ -51,13 +51,33 @@ func TestLoad_ShouldStoreAllJsonToCache_NoError(t *testing.T) {
 	assert.Equal(t, "value", v.(string))
 }
 
-func TestLoad_ShouldThrowPanicCozInalidJosn_Erro(t *testing.T) {
+func TestLoad_ShouldThrowPanicCozInalidJosn_Error(t *testing.T) {
 	assert.Panics(t, func() {
 		j, _ := json.Marshal(`{"123" "1321323}`)
 		ioutil.WriteFile("./cache.json", j, 0644)
 		cache.New(false)
 	})
 	os.Remove("./cache.json")
+}
+
+func TestLoad_ShouldReturnCorrectErrorsObject_Error(t *testing.T) {
+	f, _ := ioutil.ReadFile("./cache.json")
+	var m map[string]cache.Item
+	json.Unmarshal(f, &m)
+	e, _ := json.Marshal(m["_keys"].V)
+	var l []cache.Keyword
+	r := json.Unmarshal(e, &l)
+	t.Log(e)
+	t.Log(r)
+	t.Log(l)
+	//c := cache.New(false)
+	//v, err := c.GetV("errors")
+	//assert.NoError(t, err)
+	//assert.NotNil(t, v)
+	//t.Logf("%v", v)
+	//e, ok := v.([]executor.ExecutorError)
+	//assert.True(t, ok)
+	//assert.NotNil(t, e)
 }
 
 

@@ -5,18 +5,36 @@ import (
 	"sort"
 )
 
-func SortKeywords(keywords inhuman.Keywords) []string {
-	switchValue := make(map[int]string, len(keywords)-1)
-	values := make([]int, 0)
-	for k, v := range keywords {
-		switchValue[v] = k
-		values = append(values, v)
-	}
-	sort.Ints(values)
+type Pair struct {
+	key string
+	value int
+}
 
-	keys := make([]string, len(values))
-	for i, v := range values {
-		keys[i] = switchValue[v]
+type PairList []Pair
+
+func (p PairList) Len() int {
+	return len(p)
+}
+
+func (p PairList) Less(i, j int) bool {
+	return p[i].value < p[j].value
+}
+
+func (p PairList) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func SortKeywords(keywords inhuman.Keywords) []string {
+	pl := make(PairList, len(keywords))
+	i := 0
+	for k, v := range keywords {
+		pl[i] = Pair{k, v}
+		i++
+	}
+	sort.Sort(pl)
+	keys := make([]string, len(keywords))
+	for i, v := range pl {
+		keys[i] = v.key
 	}
 
 	return keys

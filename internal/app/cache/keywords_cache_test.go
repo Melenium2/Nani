@@ -89,6 +89,27 @@ func TestNext_ShouldReturnErrorIfIndexOutOfRange_Error(t *testing.T) {
 	assert.Empty(t, str)
 }
 
+func TestNext_ShouldReturnErrorIfCacheIsEmpty_Error(t *testing.T) {
+	kc := cache.NewKeyCache(CreateCache())
+	str, err := kc.Next()
+	assert.Error(t, err)
+	assert.Empty(t, str)
+	assert.Equal(t, "keywords cache is empty", err.Error())
+
+	err = kc.Set("key")
+	assert.NoError(t, err)
+
+	str, err = kc.Next()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, str)
+	assert.Equal(t, "key", str)
+
+	str, err = kc.Next()
+	assert.Error(t, err)
+	assert.Empty(t, str)
+	assert.Equal(t, "keywords are out of range", err.Error())
+}
+
 func TestRollback_ShouldRollbackToPrevPosition_NoErrors(t *testing.T) {
 	kc := cache.NewKeyCache(CreateCache())
 	assert.NoError(t, kc.Set("kry1"))

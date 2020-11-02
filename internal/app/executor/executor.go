@@ -7,10 +7,10 @@ import (
 	"Nani/internal/app/file"
 	"Nani/internal/app/inhuman"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	murlog "github.com/Melenium2/Murlog"
-	"log"
 	"math"
 	"runtime"
 	"time"
@@ -26,10 +26,7 @@ import (
 	*Тесты для дб. Что будет если попробывать сгенерить схему несколько раз
 	*Скипать интеграционные тесты если есть на то причины
 
-	*Ошибки сохраняются, но без самой ошибки (сделать стринг вместо ерор)
-	*Ошибка которая множит слова скорее всего зависит от метода который сортирует мапу
-		ошибка возникает потому что в мапе присутствуют одинаковые веса, поэтому есть
-		смысл сортировать мапу подругому или делать это на беке
+	*Тесты для методов getDevApps and storeDevApps
 */
 
 type Executor struct {
@@ -143,21 +140,60 @@ func (ex *Executor) storeKeywords(app *inhuman.App) {
 	ex.db <- keys
 }
 
+// storeDevApps method fetching developer application by their id
+// and then pass bundles of apps to the storeApps method
+// @params
+//	devid []string (slice of developers ids)
+func (ex *Executor) storeDevApps(devid ...string) {
+	if ex.cancel {
+		return
+	}
+
+	for _, v := range devid {
+		bundles, err := ex.getDevApps(v)
+		if err != nil {
+			ex.logger.Log("log", err)
+			ex.saveError("devapps", v, fmt.Errorf("error in storeDevApps() method %v", err))
+		}
+		go ex.storeApps(false, bundles...)
+	}
+}
+
+// getDevApps get developer applications by concrete id
+// @params
+//	devid: string (developer id)
+// @return
+// 	[]string slice of apps bundles
+// 	error Error
+func (ex *Executor) getDevApps(devid string) ([]string, error) {
+	apps, err := ex.externalApi.DevApps(devid)
+	if err != nil {
+		return nil, err
+	}
+	bundles := make([]string, len(apps))
+	for i, v := range apps {
+		bundles[i] = v.Bundle
+	}
+	return bundles, nil
+}
+
 // saveError save error to local cache
 // @params
 //	T: string (type of error)
 // 	Er: string (error representation)
 // 	Bundle: string (Bundle where error occurred)
 func (ex *Executor) saveError(t, bundle string, er error) {
-	e, err := ex.cache.GetV("errors")
+	e, err := ex.cache.GetV("_errors")
 	if err != nil {
 		ex.logger.Log("log", err)
-		ex.cache.Set("errors", []ExecutorError{{t, er, bundle}})
+		ex.cache.Set("_errors", []ExecutorError{{t, er.Error(), bundle}})
 		return
 	}
-	appErrors := e.([]ExecutorError)
-	appErrors = append(appErrors, ExecutorError{t, er, bundle})
-	ex.cache.Set("errors", appErrors)
+	appErrorsInts, _ := json.Marshal(e)
+	var appErrors []ExecutorError
+	json.Unmarshal(appErrorsInts, &appErrors)
+	appErrors = append(appErrors, ExecutorError{t, er.Error(), bundle})
+	ex.cache.Set("_errors", appErrors)
 }
 
 // selector main loop of channels
@@ -179,9 +215,7 @@ func (ex *Executor) selector() {
 			}
 		case inhuman.Keywords:
 			s := int(math.Min(float64(ex.config.KeysCount), float64(len(data))))
-			log.Print(data)
 			keys := SortKeywords(data)[:s]
-			log.Printf("%v", keys)
 			for _, k := range keys {
 				err := ex.keyCache.Set(k)
 				if err != nil {
@@ -207,6 +241,7 @@ func (ex *Executor) appsBatch() {
 	for !ex.cancel {
 		key, err := ex.keyCache.Next()
 		if err != nil {
+			ex.logger.Log("appBatch", err)
 			if err.Error() == "keywords are out of range" {
 				break
 			}
@@ -220,20 +255,17 @@ func (ex *Executor) appsBatch() {
 			ex.keyCache.Rollback()
 			continue
 		}
-		bundles := make([]string, len(res))
-		for i := 0; i < len(bundles); i++ {
-			bundles[i] = res[i].Bundle
+		devids := make([]string, len(res))
+		for i := 0; i < len(devids); i++ {
+			devids[i] = res[i].DeveloperId
 		}
-		ex.storeApps(false, bundles...)
+		ex.storeDevApps(devids...)
 	}
 	ex.wait <- struct{}{}
 }
 
 // Stop scraping
 func (ex *Executor) Stop() {
-	//ctx, cancel := context.WithTimeout(ex.ctx, time.Second*15)
-	//ex.ctx = ctx
-	//defer cancel()
 	ex.logger.Log("log", "Starting stopping application")
 	ex.cancel = true
 	<-ex.wait
@@ -255,7 +287,7 @@ func New(api inhuman.ExternalApi, storage cache.Storage, config config.Config) *
 		keyCache:    cache.NewKeyCache(storage),
 		repository:  db.New(config.Database),
 		config:      config,
-		db:          make(databaseCh, 5),
+		db:          make(databaseCh, 15),
 		wait:        make(chan struct{}, 1),
 		cancel:      false,
 		logger:      murlog.NewLogger(mConfig),
