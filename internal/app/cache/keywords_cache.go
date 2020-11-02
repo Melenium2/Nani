@@ -97,6 +97,7 @@ func (kc *KeywordsCache) get(i int) (Keyword, error) {
 	return key[i], nil
 }
 
+// getKey cast interface to int
 func getKey(k interface{}) int {
 	var num int
 	switch n := k.(type) {
