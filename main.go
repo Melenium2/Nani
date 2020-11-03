@@ -45,7 +45,7 @@ func main() {
 		ex.Stop()
 	}()
 
-	err := ex.Scrap(context.Background(), "bundles.txt")
+	err := ex.Scrap(context.Background(), bundles)
 	if err != nil {
 		log.Fatal(err)
 	}

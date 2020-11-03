@@ -90,6 +90,7 @@ func (ex *Executor) declareTask(path string) error {
 		sep = "\r\n"
 	}
 	bundles, err := f.ReadAllSlice(sep)
+	ex.logger.Log("declare task", fmt.Sprintf("len %d", len(bundles)))
 	if err != nil {
 		return err
 	}
@@ -244,6 +245,7 @@ func (ex *Executor) appsBatch() {
 		key, err := ex.keyCache.Next()
 		if err != nil {
 			ex.logger.Log("appBatch", err)
+			time.Sleep(time.Second * 5)
 			if err.Error() == "keywords are out of range" {
 				break
 			}
