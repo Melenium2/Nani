@@ -40,4 +40,4 @@ COPY --from=builder /go/bin /go/bin
 
 USER appuser:appuser
 
-ENTRYPOINT ["/go/bin/main"]
+ENTRYPOINT ["/go/bin/main -config prod.yml -schema schema.sql -cache cache.json -e bundles.txt"]
