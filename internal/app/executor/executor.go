@@ -24,7 +24,11 @@ import (
 	*Скипать интеграционные тесты если есть на то причины
 
 	*Тесты для методов getDevApps and storeDevApps
-	*Запись хеша при автоматическом закрытии приложения
+	*Запись кеша при автоматическом закрытии приложения
+	Почему то приложение получает 400 ошибки каждый раз, скорее всего потому что
+	не отправляет бандл, нужно проверить
+	*Попробывать сделать здесь \r\n разделитель
+
 */
 
 type Executor struct {
@@ -58,7 +62,9 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 		return err
 	}
 	bundles, ok := cachedBundles.([]string)
+	ex.logger.Log("cached bundles", fmt.Sprintf("%v", cachedBundles))
 	startAt := 0
+	ex.logger.Log("last bundle", last)
 	if last != nil {
 		l := last.(string)
 		for i, b := range bundles {
@@ -112,7 +118,7 @@ func (ex *Executor) storeApps(withKeys bool, bundles ...string) {
 		if ex.cancel {
 			break
 		}
-
+		ex.logger.Log("Next bundle", v)
 		app, err := ex.externalApi.App(v)
 		if err != nil {
 			ex.logger.Log("log", err, "Bundle", v)
