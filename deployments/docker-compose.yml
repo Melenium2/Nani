@@ -3,6 +3,8 @@ services:
     nani:
         build: .
         container_name: nani
+        environment:
+            - api_key=${API_KEY}
         volumes:
             - /usr/volumes/bundles.txt:/go/bin/bundles.txt
             - /usr/volumes/cache.json:/go/bin/cache.json
