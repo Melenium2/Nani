@@ -27,8 +27,8 @@ RUN ls .
 RUN cp -r ./$appname/config/prod.yml /go/bin/prod.yml
 RUN cp -r ./$appname/config/schema.sql /go/bin/schema.sql
 #
-RUN touch cache.json
-RUN touch bundles.txt
+RUN touch /go/bin/cache.json
+RUN touch /go/bin/bundles.txt
 RUN rm /go/bin/$appname
 #
 RUN ls /go/bin
