@@ -1,0 +1,5 @@
+version: '3.7'
+services:
+    nani:
+        build: .
+        container_name: nani

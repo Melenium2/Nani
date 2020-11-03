@@ -1,1 +1,11 @@
 api_url: "http://146.0.36.96:1117/api/v1"
+hl: ru
+gl: ru
+envs: [api_key]
+database:
+  name: default
+  user:
+  password:
+  address: 146.0.36.96
+  port: 8123
+  schema: schema.sql

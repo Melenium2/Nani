@@ -19,11 +19,15 @@ WORKDIR $GOPATH/src/nani
 COPY . .
 
 ENV github="https://github.com/Melenium2/Nani.git"
-ENV appname=nani
+ENV appname=Nani
 
 RUN git clone ${github}
 RUN make -C $appname deploy
-RUN rm /go/bin/${appname}
+RUN ls .
+RUN cp -r ./$appname/config/prod.yml /go/bin/prod.yml
+RUN cp -r ./$appname/config/schema.sql /go/bin/schema.sql
+RUN rm /go/bin/$appname
+RUN ls /go/bin
 
 FROM scratch
 
@@ -32,7 +36,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-COPY --from=builder /go/bin/main /go/bin/main
+COPY --from=builder /go/bin /go/bin
 
 USER appuser:appuser
 
