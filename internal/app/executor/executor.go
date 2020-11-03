@@ -24,11 +24,8 @@ import (
 	*Скипать интеграционные тесты если есть на то причины
 
 	*Тесты для методов getDevApps and storeDevApps
-	*Запись кеша при автоматическом закрытии приложения
-	Почему то приложение получает 400 ошибки каждый раз, скорее всего потому что
-	не отправляет бандл, нужно проверить
-	*Попробывать сделать здесь \r\n разделитель
-
+	*Каким то образом все таки сделать чтоб можно было хранить кеш в volumes
+	потому что процесс начинается каждый раз заного
 */
 
 type Executor struct {
@@ -118,7 +115,6 @@ func (ex *Executor) storeApps(withKeys bool, bundles ...string) {
 		if ex.cancel {
 			break
 		}
-		ex.logger.Log("Next bundle", v)
 		app, err := ex.externalApi.App(v)
 		if err != nil {
 			ex.logger.Log("log", err, "Bundle", v)
@@ -164,7 +160,7 @@ func (ex *Executor) storeDevApps(devid ...string) {
 			ex.logger.Log("log", err)
 			ex.saveError("devapps", v, fmt.Errorf("error in storeDevApps() method %v", err))
 		}
-		go ex.storeApps(false, bundles...)
+		ex.storeApps(false, bundles...)
 	}
 }
 

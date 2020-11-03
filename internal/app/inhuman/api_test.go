@@ -405,7 +405,8 @@ func TestEndpoint_ShouldConcatDefaultUrlAndEndpoint_NoError(t *testing.T) {
 }
 
 func TestApp_ShouldReturnAppInformationFromApi_NoError(t *testing.T) {
-	api := inhuman.New(Config())
+	c := Config()
+	api := inhuman.New(c)
 	res, err := api.App(bundle)
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
