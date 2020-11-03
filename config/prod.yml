@@ -7,5 +7,5 @@ database:
   user:
   password:
   address: 146.0.36.96
-  port: 8123
+  port: 1112
   schema: schema.sql

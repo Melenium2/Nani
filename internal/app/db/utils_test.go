@@ -92,6 +92,7 @@ func TestConnect_ShouldEstablishNewConnectionToDatabase_NoError(t *testing.T) {
 		Schema:   "",
 	}
 	url, err := db.ConnectionUrl(config)
+	t.Log(url)
 	assert.NoError(t, err)
 	conn, err := db.Connect(url)
 	assert.NoError(t, err)
