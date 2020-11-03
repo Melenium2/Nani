@@ -83,7 +83,7 @@ func (c *Cache) load() {
 	} else {
 		f := file.New(c.cachename)
 		b, err := f.ReadAll()
-		if err != nil {
+		if err != nil || len(b) == 0 {
 			log.Print("File not exist")
 			return
 		}
