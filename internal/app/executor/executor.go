@@ -93,6 +93,10 @@ func (ex *Executor) declareTask(path string) error {
 	if err != nil {
 		return err
 	}
+	if len(bundles) == 0 {
+		return fmt.Errorf("task file is empty")
+	}
+
 	ex.cache.Set("bundles", bundles)
 	return nil
 }
