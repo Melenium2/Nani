@@ -19,14 +19,12 @@ import (
 /*
 	TODO
 	*Записывать гео по приложению
-	*Дописать вторую часть процесса, в которой мы прогоняем
-		всех девелоперов который спарсили и берем их приложения
 	*Логгировать процесс
 
-	*Тесты для дб. Что будет если попробывать сгенерить схему несколько раз
 	*Скипать интеграционные тесты если есть на то причины
 
 	*Тесты для методов getDevApps and storeDevApps
+	*Убрать одинаковых девелоперов из выдачи
 */
 
 type Executor struct {
@@ -259,7 +257,8 @@ func (ex *Executor) appsBatch() {
 		for i := 0; i < len(devids); i++ {
 			devids[i] = res[i].DeveloperId
 		}
-		ex.storeDevApps(devids...)
+
+		ex.storeDevApps(Unique(devids...)...)
 	}
 	ex.wait <- struct{}{}
 }

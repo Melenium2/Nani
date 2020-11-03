@@ -39,3 +39,18 @@ func SortKeywords(keywords inhuman.Keywords) []string {
 
 	return keys
 }
+
+func Unique(s ...string) []string {
+	m := make(map[string]struct{}, len(s))
+	for _, v := range s {
+		m[v] = struct{}{}
+	}
+	u := make([]string, len(m))
+	i := 0
+	for k, _ := range m {
+		u[i] = k
+		i++
+	}
+
+	return u
+}
