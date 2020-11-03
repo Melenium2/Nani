@@ -5,6 +5,8 @@ services:
         container_name: nani
         environment:
             - api_key=${API_KEY}
+            - db_pass=${DB_PASS}
+            - db_user=${DB_USER}
         volumes:
             - /usr/volumes/bundles.txt:/go/bin/bundles.txt
             - /usr/volumes/cache.json:/go/bin/cache.json

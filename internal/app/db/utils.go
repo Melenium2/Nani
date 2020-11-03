@@ -11,6 +11,7 @@ import (
 
 func ConnectionUrl(config config2.DBConfig) (string, error) {
 	url := "http://"
+
 	if config.User != "" && config.Password != "" {
 		url += config.User + ":" + config.Password + "@"
 	}

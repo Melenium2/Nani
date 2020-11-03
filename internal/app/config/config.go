@@ -72,6 +72,14 @@ func New(p ...string) Config {
 	} else {
 		config.Key = v
 	}
+	v, ok = envs["db_pass"]
+	if ok {
+		config.Database.Password = v
+	}
+	v, ok = envs["db_user"]
+	if ok {
+		config.Database.User = v
+	}
 
 	return config
 }
