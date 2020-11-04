@@ -16,13 +16,16 @@ import (
 func main() {
 	var bundles string
 	bundles = os.Getenv("bundle")
+	var cacheDir string
+	cacheDir = os.Getenv("cache_dir")
 
 	var configDir string
 	flag.StringVar(&configDir, "config", "config/dev.yml", "Application config file")
 	var schemaDir string
 	flag.StringVar(&schemaDir, "schema", "config/schema.sql", "Database schema")
-	var cacheDir string
-	flag.StringVar(&cacheDir, "cache", "internal/app/cache/cache.json", "Cache file dir")
+	if cacheDir == "" {
+		flag.StringVar(&cacheDir, "cache", "internal/app/cache/cache.json", "Cache file dir")
+	}
 	if bundles == "" {
 		flag.StringVar(&bundles, "e", "bundles.txt", "The file from which to parse")
 	}
