@@ -27,22 +27,12 @@ RUN ls .
 RUN cp -r ./$appname/config/prod.yml /go/bin/prod.yml
 RUN cp -r ./$appname/config/schema.sql /go/bin/schema.sql
 RUN cp -r ./bundles.txt /go/bin/bundles.txt
+RUN mkdir /cache
 #
 RUN rm /go/bin/$appname
 #
 RUN ls /go/bin
 
-FROM scratch
-
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-
-COPY --from=builder /go/bin /go/bin
-
 WORKDIR /go/bin
 
-USER appuser:appuser
-
-CMD ["/go/bin/main", "-config", "prod.yml", "-schema", "schema.sql", "-cache", "cache.json", "-e", "bundles.txt"]
+CMD ["/go/bin/main", "-config", "prod.yml", "-schema", "schema.sql", "-cache", "/cache/cache.json", "-e", "bundles.txt"]
