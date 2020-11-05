@@ -11,6 +11,7 @@ type KeyStorage interface {
 	Set(key string) error
 	Next() (string, error)
 	Rollback() error
+	Distinct() error
 }
 
 // KeywordCache manages cache for storing key data
@@ -26,9 +27,7 @@ func (kc *KeywordsCache) Set(key string) error {
 	kc.isEmpty = false
 	keysIn, err := kc.cache.GetV(kc.key)
 
-	keysJson, _ := json.Marshal(keysIn)
-	var keys []Keyword
-	json.Unmarshal(keysJson, &keys)
+	keys := keywords(keysIn)
 
 	if err != nil {
 		kc.cache.Set(kc.key, []Keyword{{Pos: len(keys) + 1, Key: key}})
@@ -36,6 +35,35 @@ func (kc *KeywordsCache) Set(key string) error {
 	}
 
 	kc.cache.Set(kc.key, append(keys, Keyword{Pos: len(keys) + 1, Key: key}))
+	return nil
+}
+
+func (kc *KeywordsCache) Distinct() error {
+	if kc.isEmpty {
+		return fmt.Errorf("keywords cahce is empty")
+	}
+
+	keysIn, err := kc.cache.GetV(kc.key)
+	if err != nil {
+		return err
+	}
+
+	keys := keywords(keysIn)
+	distinct := make(map[string]struct{})
+
+	for _, v := range keys {
+		distinct[v.Key] = struct{}{}
+	}
+
+	result := make([]Keyword, len(distinct))
+	i := 0
+	for k, _ := range distinct {
+		result[i] = Keyword{Pos: i+1, Key: k}
+		i++
+	}
+
+	kc.cache.Set(kc.key, result)
+
 	return nil
 }
 
@@ -48,15 +76,15 @@ func (kc *KeywordsCache) Next() (string, error) {
 	keyIn, err := kc.cache.GetV(kc.next)
 	if err != nil {
 		kc.cache.Set(kc.next, 0)
-		k, err := kc.get(0)
+		k, err := kc.item(0)
 		if err != nil {
 			return "", err
 		}
 		return k.Key, nil
 	}
-	key := getKey(keyIn) + 1
+	key := key(keyIn) + 1
 
-	keyword, err := kc.get(key)
+	keyword, err := kc.item(key)
 	if err != nil {
 		kc.isEmpty = true
 		return "", errors.New("keywords are out of range")
@@ -73,7 +101,7 @@ func (kc *KeywordsCache) Rollback() error {
 	if err != nil {
 		return nil
 	}
-	key := getKey(keyIn)
+	key := key(keyIn)
 
 	if key == 0 {
 		return nil
@@ -84,14 +112,12 @@ func (kc *KeywordsCache) Rollback() error {
 }
 
 // Get item with index i
-func (kc *KeywordsCache) get(i int) (Keyword, error) {
+func (kc *KeywordsCache) item(i int) (Keyword, error) {
 	keyIn, err := kc.cache.GetV(kc.key)
 	if err != nil {
 		return Keyword{}, errors.New("keywords cache is empty")
 	}
-	keysJson, _ := json.Marshal(keyIn)
-	var keys []Keyword
-	json.Unmarshal(keysJson, &keys)
+	keys := keywords(keyIn)
 
 	if i >= len(keys) {
 		return Keyword{}, errors.New("wrong index")
@@ -100,8 +126,8 @@ func (kc *KeywordsCache) get(i int) (Keyword, error) {
 	return keys[i], nil
 }
 
-// getKey cast interface to int
-func getKey(k interface{}) int {
+// key cast interface to int
+func key(k interface{}) int {
 	var num int
 	switch n := k.(type) {
 	case float64:
@@ -112,6 +138,17 @@ func getKey(k interface{}) int {
 	}
 
 	return num
+}
+
+func keywords(keyIn interface{}) []Keyword {
+	if keyIn == nil {
+		return []Keyword{}
+	}
+	keysJson, _ := json.Marshal(keyIn)
+	var keys []Keyword
+	json.Unmarshal(keysJson, &keys)
+
+	return keys
 }
 
 // Create new instance of keywordsCache

@@ -32,7 +32,7 @@ func main() {
 	flag.Parse()
 
 
-	// Just for test case
+	//Just for test case
 	//os.Setenv("api_key", "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61")
 	conf := config.New(configDir)
 	conf.Database.Schema = schemaDir

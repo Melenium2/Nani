@@ -4,7 +4,6 @@ import (
 	"Nani/internal/app/cache"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
 	"sync"
 	"testing"
 )
@@ -133,32 +132,38 @@ func TestRollback_ShouldReturnNoErrorIfCacheIsEmpty_NoError(t *testing.T) {
 	assert.NoError(t, kc.Rollback())
 }
 
-func TestSet_ShouldCorrectSetKeywordsWithManyGoroutines_NoError(t *testing.T) {
-	c := &mockCache{
-		cache: make(map[string]interface{}),
-	}
-	kc := cache.NewKeyCache(c)
-	var keys []string
-	for i := 0; i < 100; i++ {
-		keys = append(keys, fmt.Sprintf("key=%d", rand.Int()))
+func TestDistinct_ShouldRemoveDuplicatesFromCache_NoError(t *testing.T) {
+	kc := cache.NewKeyCache(CreateCache())
+
+	kc.Set("key1")
+	kc.Set("key1")
+	kc.Set("key1")
+	kc.Set("key2")
+	kc.Set("key2")
+	kc.Set("key3")
+	kc.Set("key3")
+	kc.Set("key4")
+
+	assert.NoError(t, kc.Distinct())
+	dubls := make(map[string]int)
+	for {
+		key, err := kc.Next()
+		if err != nil {
+			break
+		}
+		dubls[key]+=1
 	}
 
-	var wg sync.WaitGroup
-	for i := 0; i < 30; i++ {
-		wg.Add(1)
-		go func(ar []string) {
-			for _, v := range ar {
-				assert.NoError(t, kc.Set(v))
-			}
-			wg.Done()
-		}(keys)
-	}
-	wg.Wait()
+	assert.Equal(t, 4, len(dubls))
 
-	keysInt, _ := c.cache["_keys"]
-	k := keysInt.([]cache.Keyword)
-
-	for _, v := range k {
-		println(v.Key)
+	for _, v := range dubls {
+		assert.Equal(t, 1, v)
 	}
 }
+
+func TestDistinct_ShouldReturnErrorCozKeyNotFound_Error(t *testing.T) {
+	kc := cache.NewKeyCache(CreateCache())
+
+	assert.Error(t, kc.Distinct())
+}
+

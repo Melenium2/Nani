@@ -432,3 +432,46 @@ func TestAppBatch_ShouldSaveSomeApplicationToDbWhileTimeIsNotExpired(t *testing.
 
 	conn.Exec(fmt.Sprint("drop table apps"))
 }
+
+func TestScrap_ShouldScrapAppsWithWithKeywordsAndThenDistinct_NoError(t *testing.T) {
+	conf := config.New()
+	conf.KeysCount = 10
+	conf.AppsCount = 10
+	conf.Key = "Security 3923cf9a417e73be95b40dc5db60c97dcb876a61"
+
+	r := &mock_repo{Db: make(map[int]*inhuman.App)}
+	c := &mock_storage{cache: make(map[string]interface{})}
+
+	ex := &Executor{
+		cache:       c,
+		externalApi: inhuman.New(conf),
+		keyCache:    cache.NewKeyCache(c),
+		repository:  r,
+		db:          make(databaseCh, 10),
+		config:      conf,
+		ctx:         context.Background(),
+		wait:        make(chan struct{}, 1),
+		logger:      murlog.NewNopLogger(),
+	}
+	go ex.selector()
+	bundles := []string{"com.dragonscapes.global", "com.funplus.townkins.global", "com.bigpoint.wefarm", "com.SocialInfinite.FNFamilyRelics"}
+	ex.storeApps(true, bundles...)
+
+	ex.wait <- struct{}{}
+	ex.Stop()
+
+	assert.NoError(t, ex.keyCache.Distinct())
+
+	distinct := make(map[string]int)
+	for {
+		key, err := ex.keyCache.Next()
+		if err != nil {
+			break
+		}
+		distinct[key]+=1
+	}
+
+	for _, v := range distinct {
+		assert.Equal(t, 1, v)
+	}
+}

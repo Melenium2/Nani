@@ -20,12 +20,8 @@ import (
 	TODO
 	*Записывать гео по приложению
 	*Логгировать процесс
-
 	*Скипать интеграционные тесты если есть на то причины
-
 	*Тесты для методов getDevApps and storeDevApps
-	*Каким то образом все таки сделать чтоб можно было хранить кеш в volumes
-	потому что процесс начинается каждый раз заного
 */
 
 type Executor struct {
@@ -59,7 +55,6 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 		return err
 	}
 	bundles, ok := cachedBundles.([]string)
-	ex.logger.Log("cached bundles", fmt.Sprintf("%v", cachedBundles))
 	startAt := 0
 	ex.logger.Log("last bundle", last)
 	if last != nil {
@@ -73,11 +68,14 @@ func (ex *Executor) Scrap(ctx context.Context, scrapfile string) error {
 	if !ok {
 		return errors.New("can not convert bundles")
 	}
+
 	ex.storeApps(true, bundles[startAt:]...)
+	if err := ex.keyCache.Distinct(); err != nil {
+		return err
+	}
 
 	<-ex.wait
 
-	// Second step
 	return nil
 }
 
@@ -115,6 +113,7 @@ func (ex *Executor) storeApps(withKeys bool, bundles ...string) {
 		if ex.cancel {
 			break
 		}
+
 		app, err := ex.externalApi.App(v)
 		if err != nil {
 			ex.logger.Log("log", err, "Bundle", v)
