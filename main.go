@@ -52,6 +52,13 @@ func main() {
 		ex.Stop()
 	}()
 
+	defer func() {
+		if r := recover(); r != nil {
+			// Сохранить дамп
+			log.Fatalf("recovered from panic err = %v", r)
+		}
+	}()
+
 	err := ex.Scrap(context.Background(), bundles)
 	if err != nil {
 		log.Fatal(err)
