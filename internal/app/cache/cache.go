@@ -18,6 +18,7 @@ var debug bool = false
 type Storage interface {
 	Set(key string, value interface{})
 	GetV(key string) (interface{}, error)
+	Dump()
 }
 
 type Cache struct {
@@ -43,6 +44,23 @@ func (c *Cache) GetV(key string) (interface{}, error) {
 	return v.V, nil
 }
 
+func (c *Cache) Dump() {
+	if len(c.store) > 0 {
+		f := file.New(c.cachename)
+		str, err := json.Marshal(c.store)
+		if err != nil {
+			panic(err)
+		}
+		f.WriteLines(string(str))
+
+		log.Print("cache crated")
+	} else {
+		log.Print("skip creating")
+
+		return
+	}
+}
+
 func (c *Cache) dump() {
 	if debug {
 		log.Print("start dump")
@@ -57,20 +75,7 @@ func (c *Cache) dump() {
 		}
 
 		close(sig)
-		if len(c.store) > 0 {
-			f := file.New(c.cachename)
-			str, err := json.Marshal(c.store)
-			if err != nil {
-				panic(err)
-			}
-			f.WriteLines(string(str))
-
-			log.Print("cache crated")
-		} else {
-			log.Print("skip creating")
-
-			return
-		}
+		c.Dump()
 	}()
 }
 

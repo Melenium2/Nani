@@ -29,6 +29,8 @@ func (m *mockCache) GetV(key string) (interface{}, error) {
 	return v, nil
 }
 
+func (m *mockCache) Dump() {}
+
 func CreateCache() *mockCache {
 	return &mockCache{
 		cache: make(map[string]interface{}),

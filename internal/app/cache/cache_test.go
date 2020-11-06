@@ -80,6 +80,28 @@ func TestLoad_ShouldReturnCorrectErrorsObject_Error(t *testing.T) {
 	//assert.NotNil(t, e)
 }
 
+func TestDump_ShouldSaveValidDump_NoError(t *testing.T) {
+	k, v := "key", "value"
+	c := cache.New(true)
+	c.Set(k, v)
+	res, err := c.GetV(k)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, v, res.(string))
+	c.Dump()
+
+	f, err := ioutil.ReadFile("./cache.json")
+	assert.NoError(t, err)
+
+	var m map[string]cache.Item
+	json.Unmarshal(f, &m)
+
+	assert.NotNil(t, m)
+	assert.Equal(t, "value", m["key"].V)
+
+	os.Remove("./cache.json")
+}
+
 
 
 

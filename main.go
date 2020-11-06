@@ -54,9 +54,9 @@ func main() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			// Сохранить дамп
-			log.Fatalf("recovered from panic err = %v", r)
+			log.Printf("recovered from panic err = %v", r)
 		}
+		storage.Dump()
 	}()
 
 	err := ex.Scrap(context.Background(), bundles)
